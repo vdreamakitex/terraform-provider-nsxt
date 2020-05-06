@@ -10,6 +10,8 @@ import (
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/bindings"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/data"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/protocol/client"
+	gm_domains "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/global_infra/domains"
+	gm_model "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/model"
 	"github.com/vmware/vsphere-automation-sdk-go/services/nsxt/infra/domains"
 	"github.com/vmware/vsphere-automation-sdk-go/services/nsxt/model"
 	"log"
@@ -39,6 +41,8 @@ var conjunctionOperatorValues = []string{
 	model.ConjunctionOperator_CONJUNCTION_OPERATOR_OR,
 	model.ConjunctionOperator_CONJUNCTION_OPERATOR_AND,
 }
+
+var policyGlobalManager = true
 
 func resourceNsxtPolicyGroup() *schema.Resource {
 	return &schema.Resource{
@@ -175,9 +179,14 @@ func getCriteriaSetSchema() *schema.Resource {
 }
 
 func resourceNsxtPolicyGroupExistsInDomain(id string, domain string, connector *client.RestConnector) bool {
-	client := domains.NewDefaultGroupsClient(connector)
-
-	_, err := client.Get(domain, id)
+	var err error
+	if policyGlobalManager {
+		client := gm_domains.NewDefaultGroupsClient(connector)
+		_, err = client.Get(domain, id)
+	} else {
+		client := domains.NewDefaultGroupsClient(connector)
+		_, err = client.Get(domain, id)
+	}
 	if err == nil {
 		return true
 	}
@@ -569,7 +578,6 @@ func validateGroupCriteriaAndConjunctions(criteriaSets []interface{}, conjunctio
 
 func resourceNsxtPolicyGroupCreate(d *schema.ResourceData, m interface{}) error {
 	connector := getPolicyConnector(m)
-	client := domains.NewDefaultGroupsClient(connector)
 
 	// Initialize resource Id and verify this ID is not yet used
 	id, err := getOrGenerateID(d, connector, resourceNsxtPolicyGroupExistsInDomainPartial(d.Get("domain").(string)))
@@ -593,7 +601,6 @@ func resourceNsxtPolicyGroupCreate(d *schema.ResourceData, m interface{}) error 
 	displayName := d.Get("display_name").(string)
 	description := d.Get("description").(string)
 	tags := getPolicyTagsFromSchema(d)
-
 	obj := model.Group{
 		DisplayName: &displayName,
 		Description: &description,
@@ -603,7 +610,40 @@ func resourceNsxtPolicyGroupCreate(d *schema.ResourceData, m interface{}) error 
 
 	// Create the resource using PATCH
 	log.Printf("[INFO] Creating Group with ID %s", id)
-	err = client.Patch(d.Get("domain").(string), id, obj)
+	converter := bindings.NewTypeConverter()
+	converter.SetMode(bindings.REST)
+	if policyGlobalManager {
+		dataValue, errors := converter.ConvertToVapi(obj, model.GroupBindingType())
+		gmObj, err2 := converter.ConvertToGolang(dataValue, gm_model.GroupBindingType())
+		if errors != nil {
+			return errors[0]
+		}
+		if err2 != nil {
+			return err2[0]
+		}
+		gmGroup := gmObj.(gm_model.Group)
+		/*
+			obj := gm_model.Group{
+				DisplayName: &displayName,
+				Description: &description,
+				// Tags:        tags,
+				Expression: expressionData,
+			}
+		*/
+		client := gm_domains.NewDefaultGroupsClient(connector)
+		err = client.Patch(d.Get("domain").(string), id, gmGroup)
+	} else {
+		/*
+			obj := model.Group{
+				DisplayName: &displayName,
+				Description: &description,
+				// Tags:        tags,
+				Expression: expressionData,
+			}
+		*/
+		client := domains.NewDefaultGroupsClient(connector)
+		err = client.Patch(d.Get("domain").(string), id, obj)
+	}
 	if err != nil {
 		return handleCreateError("Group", id, err)
 	}
@@ -616,32 +656,70 @@ func resourceNsxtPolicyGroupCreate(d *schema.ResourceData, m interface{}) error 
 
 func resourceNsxtPolicyGroupRead(d *schema.ResourceData, m interface{}) error {
 	connector := getPolicyConnector(m)
-	client := domains.NewDefaultGroupsClient(connector)
 
 	id := d.Id()
 	if id == "" {
 		return fmt.Errorf("Error obtaining Group ID")
 	}
 
+	converter := bindings.NewTypeConverter()
+	converter.SetMode(bindings.REST)
+
 	domainName := d.Get("domain").(string)
-	obj, err := client.Get(domainName, id)
+	var err error
+	var objPtr *model.Group
+	if policyGlobalManager {
+		client := gm_domains.NewDefaultGroupsClient(connector)
+		obj, err1 := client.Get(domainName, id)
+		/*
+			expression = obj.Expression
+			displayName = obj.DisplayName
+			description = obj.Description
+			path = obj.Path
+			revision = obj.Revision
+		*/
+		err = err1
+		dataValue, err2 := converter.ConvertToVapi(obj, gm_model.GroupBindingType())
+		if err2 != nil {
+			return err2[0]
+		}
+		lmObj, err3 := converter.ConvertToGolang(dataValue, model.GroupBindingType())
+		if err3 != nil {
+			return err3[0]
+		}
+		lmObj1 := lmObj.(model.Group)
+		objPtr = &lmObj1
+
+	} else {
+		client := domains.NewDefaultGroupsClient(connector)
+		obj, err1 := client.Get(domainName, id)
+		/*
+			expression = obj.Expression
+			displayName = obj.DisplayName
+			description = obj.Description
+			path = obj.Path
+			revision = obj.Revision
+		*/
+		err = err1
+		objPtr = &obj
+	}
 	if err != nil {
 		return handleReadError(d, "Group", id, err)
 	}
 
-	criteria, conditions, err := fromGroupExpressionData(obj.Expression)
+	criteria, conditions, err := fromGroupExpressionData(objPtr.Expression)
 	log.Printf("[INFO] Found %d criteria, %d conjunctions for group %s", len(criteria), len(conditions), id)
 	if err != nil {
 		return err
 	}
 
-	d.Set("display_name", obj.DisplayName)
-	d.Set("description", obj.Description)
-	setPolicyTagsInSchema(d, obj.Tags)
+	d.Set("display_name", objPtr.DisplayName)
+	d.Set("description", objPtr.Description)
+	setPolicyTagsInSchema(d, objPtr.Tags)
 	d.Set("nsx_id", id)
-	d.Set("path", obj.Path)
-	d.Set("domain", getDomainFromResourcePath(*obj.Path))
-	d.Set("revision", obj.Revision)
+	d.Set("path", objPtr.Path)
+	d.Set("domain", getDomainFromResourcePath(*objPtr.Path))
+	d.Set("revision", objPtr.Revision)
 	d.Set("criteria", criteria)
 	d.Set("conjunction", conditions)
 
@@ -650,7 +728,6 @@ func resourceNsxtPolicyGroupRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceNsxtPolicyGroupUpdate(d *schema.ResourceData, m interface{}) error {
 	connector := getPolicyConnector(m)
-	client := domains.NewDefaultGroupsClient(connector)
 
 	id := d.Id()
 	if id == "" {
@@ -674,16 +751,34 @@ func resourceNsxtPolicyGroupUpdate(d *schema.ResourceData, m interface{}) error 
 	description := d.Get("description").(string)
 	displayName := d.Get("display_name").(string)
 	tags := getPolicyTagsFromSchema(d)
-
 	obj := model.Group{
 		DisplayName: &displayName,
 		Description: &description,
 		Tags:        tags,
 		Expression:  expressionData,
 	}
+	converter := bindings.NewTypeConverter()
+	converter.SetMode(bindings.REST)
 
-	// Update the resource using PATCH
-	err = client.Patch(d.Get("domain").(string), id, obj)
+	if policyGlobalManager {
+		dataValue, errors := converter.ConvertToVapi(obj, model.GroupBindingType())
+		gmObj, err2 := converter.ConvertToGolang(dataValue, gm_model.GroupBindingType())
+		if errors != nil {
+			return errors[0]
+		}
+		if err2 != nil {
+			return err2[0]
+		}
+		gmObj1 := gmObj.(gm_model.Group)
+		client := gm_domains.NewDefaultGroupsClient(connector)
+		// Update the resource using PATCH
+		err = client.Patch(d.Get("domain").(string), id, gmObj1)
+	} else {
+		client := domains.NewDefaultGroupsClient(connector)
+
+		// Update the resource using PATCH
+		err = client.Patch(d.Get("domain").(string), id, obj)
+	}
 	if err != nil {
 		return handleUpdateError("Group", id, err)
 	}
@@ -698,11 +793,17 @@ func resourceNsxtPolicyGroupDelete(d *schema.ResourceData, m interface{}) error 
 	}
 
 	connector := getPolicyConnector(m)
-	client := domains.NewDefaultGroupsClient(connector)
 
 	forceDelete := true
 	failIfSubtreeExists := false
-	err := client.Delete(d.Get("domain").(string), id, &failIfSubtreeExists, &forceDelete)
+	var err error
+	if policyGlobalManager {
+		client := gm_domains.NewDefaultGroupsClient(connector)
+		err = client.Delete(d.Get("domain").(string), id, &failIfSubtreeExists, &forceDelete)
+	} else {
+		client := domains.NewDefaultGroupsClient(connector)
+		err = client.Delete(d.Get("domain").(string), id, &failIfSubtreeExists, &forceDelete)
+	}
 	if err != nil {
 		return handleDeleteError("Group", id, err)
 	}

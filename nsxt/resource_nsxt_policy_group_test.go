@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	gm_domains "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/global_infra/domains"
 	"github.com/vmware/vsphere-automation-sdk-go/services/nsxt/infra/domains"
 	"testing"
 )
@@ -329,7 +330,6 @@ func testAccNsxtPolicyGroupExists(resourceName string, domainName string) resour
 	return func(state *terraform.State) error {
 
 		connector := getPolicyConnector(testAccProvider.Meta().(nsxtClients))
-		nsxClient := domains.NewDefaultGroupsClient(connector)
 
 		rs, ok := state.RootModule().Resources[resourceName]
 		if !ok {
@@ -341,9 +341,17 @@ func testAccNsxtPolicyGroupExists(resourceName string, domainName string) resour
 			return fmt.Errorf("Policy Group resource ID not set in resources")
 		}
 
-		_, err := nsxClient.Get(domainName, resourceID)
+		var err error
+		policyGlobalManager = true
+		if policyGlobalManager {
+			nsxClient := gm_domains.NewDefaultGroupsClient(connector)
+			_, err = nsxClient.Get(domainName, resourceID)
+		} else {
+			nsxClient := domains.NewDefaultGroupsClient(connector)
+			_, err = nsxClient.Get(domainName, resourceID)
+		}
 		if err != nil {
-			return fmt.Errorf("Error while retrieving policy Group ID %s. Error: %v", resourceID, err)
+			return logAPIError("failed to read group", err)
 		}
 
 		return nil
@@ -352,7 +360,6 @@ func testAccNsxtPolicyGroupExists(resourceName string, domainName string) resour
 
 func testAccNsxtPolicyGroupCheckDestroy(state *terraform.State, displayName string, domainName string) error {
 	connector := getPolicyConnector(testAccProvider.Meta().(nsxtClients))
-	nsxClient := domains.NewDefaultGroupsClient(connector)
 	for _, rs := range state.RootModule().Resources {
 
 		if rs.Type != "nsxt_policy_group" {
@@ -360,7 +367,15 @@ func testAccNsxtPolicyGroupCheckDestroy(state *terraform.State, displayName stri
 		}
 
 		resourceID := rs.Primary.Attributes["id"]
-		_, err := nsxClient.Get(domainName, resourceID)
+		var err error
+		policyGlobalManager = true
+		if policyGlobalManager {
+			nsxClient := gm_domains.NewDefaultGroupsClient(connector)
+			_, err = nsxClient.Get(domainName, resourceID)
+		} else {
+			nsxClient := domains.NewDefaultGroupsClient(connector)
+			_, err = nsxClient.Get(domainName, resourceID)
+		}
 		if err == nil {
 			return fmt.Errorf("Policy Group %s still exists", displayName)
 		}
