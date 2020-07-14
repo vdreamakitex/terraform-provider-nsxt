@@ -99,11 +99,13 @@ func getPolicyLocaleServiceSchema(isTier1 bool) *schema.Schema {
 			ConflictsWith: nodeConficts,
 		},
 		"redistribution_config": getRedistributionConfigSchema(),
+		"bgp_config":            getPolicyBGPConfigSchema(),
 		"path":                  getPathSchema(),
 		"revision":              getRevisionSchema(),
 	}
 	if isTier1 {
 		delete(elemSchema, "redistribution_config")
+		delete(elemSchema, "bgp_config")
 	}
 
 	result := &schema.Schema{
@@ -269,7 +271,7 @@ func initChildLocaleService(serviceStruct *model.LocaleServices, markForDelete b
 	return dataValue.(*data.StructValue), nil
 }
 
-func initGatewayLocaleServices(d *schema.ResourceData, connector *client.RestConnector) ([]*data.StructValue, error) {
+func initGatewayLocaleServices(d *schema.ResourceData) ([]*data.StructValue, error) {
 	var localeServices []*data.StructValue
 
 	oldServices, newServices := d.GetChange("locale_service")
@@ -313,6 +315,19 @@ func initGatewayLocaleServices(d *schema.ResourceData, connector *client.RestCon
 			// if this is an update for existing locale service,
 			// we need revision
 			serviceStruct.Revision = &revision
+		}
+
+		bgpConfig := cfg["bgp_config"].([]interface{})
+		if len(bgpConfig) > 0 {
+			var lsChildren []*data.StructValue
+			// For Global Manager BGP is defined under locale services
+			routingConfigStruct := resourceNsxtPolicyTier0GatewayBGPConfigSchemaToStruct(bgpConfig[0], false, d.Id())
+			structValue, err := initPolicyTier0ChildBgpConfig(&routingConfigStruct)
+			if err != nil {
+				return localeServices, err
+			}
+			lsChildren = append(lsChildren, structValue)
+			serviceStruct.Children = lsChildren
 		}
 
 		dataValue, err := initChildLocaleService(&serviceStruct, false)

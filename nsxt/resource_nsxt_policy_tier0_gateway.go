@@ -12,6 +12,7 @@ import (
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/protocol/client"
 	gm_infra "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/global_infra"
 	gm_tier_0s "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/global_infra/tier_0s"
+	gm_locale_services "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/global_infra/tier_0s/locale_services"
 	gm_model "github.com/vmware/vsphere-automation-sdk-go/services/nsxt-gm/model"
 	"github.com/vmware/vsphere-automation-sdk-go/services/nsxt/infra"
 	"github.com/vmware/vsphere-automation-sdk-go/services/nsxt/infra/tier_0s"
@@ -346,18 +347,7 @@ func getPolicyTier0GatewayLocaleServiceWithEdgeCluster(gwID string, connector *c
 	return nil, nil
 }
 
-func resourceNsxtPolicyTier0GatewayReadBGPConfig(d *schema.ResourceData, connector *client.RestConnector, localeService model.LocaleServices) error {
-	var bgpConfigs []map[string]interface{}
-	client := locale_services.NewDefaultBgpClient(connector)
-
-	t0Id := d.Id()
-	bgpConfig, err := client.Get(t0Id, *localeService.Id)
-	if err != nil {
-		if isNotFoundError(err) {
-			return d.Set("bgp_config", bgpConfigs)
-		}
-		return err
-	}
+func initPolicyTier0BGPConfigMap(bgpConfig *model.BgpRoutingConfig) map[string]interface{} {
 
 	cfgMap := make(map[string]interface{})
 	cfgMap["revision"] = int(*bgpConfig.Revision)
@@ -399,8 +389,24 @@ func resourceNsxtPolicyTier0GatewayReadBGPConfig(d *schema.ResourceData, connect
 	}
 	cfgMap["route_aggregation"] = aggregationList
 
-	bgpConfigs = append(bgpConfigs, cfgMap)
+	return cfgMap
+}
 
+func resourceNsxtPolicyTier0GatewayReadBGPConfig(d *schema.ResourceData, connector *client.RestConnector, localeService model.LocaleServices) error {
+	var bgpConfigs []map[string]interface{}
+	client := locale_services.NewDefaultBgpClient(connector)
+
+	t0Id := d.Id()
+	bgpConfig, err := client.Get(t0Id, *localeService.Id)
+	if err != nil {
+		if isNotFoundError(err) {
+			return d.Set("bgp_config", bgpConfigs)
+		}
+		return err
+	}
+
+	data := initPolicyTier0BGPConfigMap(&bgpConfig)
+	bgpConfigs = append(bgpConfigs, data)
 	return d.Set("bgp_config", bgpConfigs)
 }
 
@@ -671,6 +677,21 @@ func verifyPolicyTier0GatewayConfig(d *schema.ResourceData, isGlobalManager bool
 	return nil
 }
 
+func initPolicyTier0ChildBgpConfig(config *model.BgpRoutingConfig) (*data.StructValue, error) {
+	converter := bindings.NewTypeConverter()
+	converter.SetMode(bindings.REST)
+	childConfig := model.ChildBgpRoutingConfig{
+		ResourceType:     "ChildBgpRoutingConfig",
+		BgpRoutingConfig: config,
+	}
+	dataValue, errors := converter.ConvertToVapi(childConfig, model.ChildBgpRoutingConfigBindingType())
+	if errors != nil {
+		return nil, fmt.Errorf("Error converting child BGP Routing Configuration: %v", errors[0])
+	}
+
+	return dataValue.(*data.StructValue), nil
+}
+
 func policyTier0GatewayResourceToInfraStruct(d *schema.ResourceData, connector *client.RestConnector, isGlobalManager bool, id string) (model.Infra, error) {
 	var infraChildren, gwChildren, lsChildren []*data.StructValue
 	var infraStruct model.Infra
@@ -728,17 +749,13 @@ func policyTier0GatewayResourceToInfraStruct(d *schema.ResourceData, connector *
 
 	bgpConfig := d.Get("bgp_config").([]interface{})
 	if len(bgpConfig) > 0 && !isGlobalManager {
-		// BGP not supported for global manager yet
+		// For Global Manager BGP is defined under locale services
 		routingConfigStruct := resourceNsxtPolicyTier0GatewayBGPConfigSchemaToStruct(bgpConfig[0], vrfConfig != nil, id)
-		childConfig := model.ChildBgpRoutingConfig{
-			ResourceType:     "ChildBgpRoutingConfig",
-			BgpRoutingConfig: &routingConfigStruct,
+		structValue, err := initPolicyTier0ChildBgpConfig(&routingConfigStruct)
+		if err != nil {
+			return infraStruct, err
 		}
-		dataValue, errors := converter.ConvertToVapi(childConfig, model.ChildBgpRoutingConfigBindingType())
-		if errors != nil {
-			return infraStruct, fmt.Errorf("Error converting child BGP Routing Configuration: %v", errors[0])
-		}
-		lsChildren = append(lsChildren, dataValue.(*data.StructValue))
+		lsChildren = append(lsChildren, structValue)
 	}
 
 	edgeClusterPath := d.Get("edge_cluster_path").(string)
@@ -765,7 +782,7 @@ func policyTier0GatewayResourceToInfraStruct(d *schema.ResourceData, connector *
 		}
 	} else {
 		// Global Manager
-		localeServices, err := initGatewayLocaleServices(d, connector)
+		localeServices, err := initGatewayLocaleServices(d)
 		if err != nil {
 			return infraStruct, err
 		}
@@ -897,6 +914,27 @@ func resourceNsxtPolicyTier0GatewayRead(d *schema.ResourceData, m interface{}) e
 				cfgMap["revision"] = service.Revision
 				redistributionConfigs := getLocaleServiceRedistributionConfig(&service)
 				cfgMap["redistribution_config"] = redistributionConfigs
+
+				var bgpConfigs []map[string]interface{}
+				bgpClient := gm_locale_services.NewDefaultBgpClient(connector)
+
+				bgpConfig, err := bgpClient.Get(id, *service.Id)
+				if err != nil {
+					if !isNotFoundError(err) {
+						return err
+					}
+				} else {
+
+					lmObj, convErr := convertModelBindingType(bgpConfig, gm_model.BgpRoutingConfigBindingType(), model.BgpRoutingConfigBindingType())
+					if convErr != nil {
+						return convErr
+					}
+					lmBgpConfig := lmObj.(model.BgpRoutingConfig)
+					data := initPolicyTier0BGPConfigMap(&lmBgpConfig)
+					bgpConfigs = append(bgpConfigs, data)
+				}
+				cfgMap["bgp_config"] = bgpConfigs
+
 				services = append(services, cfgMap)
 
 			} else {
