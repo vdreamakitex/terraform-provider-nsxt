@@ -123,7 +123,7 @@ func resourceNsxtPolicyTier0GatewayInterfaceCreate(d *schema.ResourceData, m int
 	tier0ID := getPolicyIDFromPath(tier0Path)
 
 	segmentPath := d.Get("segment_path").(string)
-	objSitePath := d.Get("site_path").(string)
+	sitePath := d.Get("site_path").(string)
 	ifType := d.Get("type").(string)
 	if len(segmentPath) == 0 && ifType != model.Tier0Interface_TYPE_LOOPBACK {
 		// segment_path in required for all interfaces other than loopback
@@ -132,19 +132,16 @@ func resourceNsxtPolicyTier0GatewayInterfaceCreate(d *schema.ResourceData, m int
 
 	localeServiceID := ""
 	if isPolicyGlobalManager(m) {
-		if objSitePath == "" {
+		if sitePath == "" {
 			return attributeRequiredGlobalManagerError("site_path", "nsxt_policy_tier0_gateway_interface")
 		}
-		localeServices, err := listPolicyTier0GatewayLocaleServices(connector, tier0ID, true)
-		if err != nil {
-			return err
-		}
-		localeServiceID, err = getGlobalPolicyGatewayLocaleServiceIDWithSite(localeServices, objSitePath, tier0ID)
+		var err error
+		localeServiceID, err = findTier0LocaleServiceForSite(connector, tier0ID, sitePath)
 		if err != nil {
 			return err
 		}
 	} else {
-		if objSitePath != "" {
+		if sitePath != "" {
 			return globalManagerOnlyError()
 		}
 		localeService, err := getPolicyTier0GatewayLocaleServiceWithEdgeCluster(tier0ID, connector)

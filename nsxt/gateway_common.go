@@ -527,3 +527,11 @@ func getLocaleServiceRedistributionConfig(serviceStruct *model.LocaleServices) [
 	redistributionConfigs = append(redistributionConfigs, elem)
 	return redistributionConfigs
 }
+
+func findTier0LocaleServiceForSite(connector *client.RestConnector, gwID string, sitePath string) (string, error) {
+	localeServices, err := listPolicyTier0GatewayLocaleServices(connector, gwID, true)
+	if err != nil {
+		return "", err
+	}
+	return getGlobalPolicyGatewayLocaleServiceIDWithSite(localeServices, sitePath, gwID)
+}

@@ -137,11 +137,9 @@ func getPolicyTier0BGPConfigSchema() *schema.Schema {
 }
 func getPolicyBGPConfigSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		"gateway_path": getPolicyPathSchema(true, true, "Gateway for this BGP config"),
-		"site_path":    getPolicyPathSchema(false, false, "Site Path for this BGP config"),
-		"tag":          getTagsSchema(),
-		"revision":     getRevisionSchema(),
-		"path":         getPathSchema(),
+		"tag":      getTagsSchema(),
+		"revision": getRevisionSchema(),
+		"path":     getPathSchema(),
 		"ecmp": {
 			Type:        schema.TypeBool,
 			Description: "Flag to enable ECMP",
