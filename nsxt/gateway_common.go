@@ -99,13 +99,11 @@ func getPolicyLocaleServiceSchema(isTier1 bool) *schema.Schema {
 			ConflictsWith: nodeConficts,
 		},
 		"redistribution_config": getRedistributionConfigSchema(),
-		"bgp_config":            getPolicyBGPConfigSchema(),
 		"path":                  getPathSchema(),
 		"revision":              getRevisionSchema(),
 	}
 	if isTier1 {
 		delete(elemSchema, "redistribution_config")
-		delete(elemSchema, "bgp_config")
 	}
 
 	result := &schema.Schema{

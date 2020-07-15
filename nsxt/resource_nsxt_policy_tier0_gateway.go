@@ -111,7 +111,7 @@ func resourceNsxtPolicyTier0Gateway() *schema.Resource {
 			"ipv6_dad_profile_path":  getIPv6DadPathSchema(),
 			"edge_cluster_path":      getPolicyEdgeClusterPathSchema(),
 			"locale_service":         getPolicyLocaleServiceSchema(false),
-			"bgp_config":             getPolicyBGPConfigSchema(),
+			"bgp_config":             getPolicyTier0BGPConfigSchema(),
 			"vrf_config":             getPolicyVRFConfigSchema(),
 			"dhcp_config_path":       getPolicyPathSchema(false, false, "Policy path to DHCP server or relay configuration to use for this Tier0"),
 			"intersite_config":       getGatewayIntersiteConfigSchema(),
@@ -120,7 +120,9 @@ func resourceNsxtPolicyTier0Gateway() *schema.Resource {
 	}
 }
 
-func getPolicyBGPConfigSchema() *schema.Schema {
+func getPolicyTier0BGPConfigSchema() *schema.Schema {
+	schemaMap := getPolicyBGPConfigSchema()
+	delete(schemaMap, "locale_service_path")
 	return &schema.Schema{
 		// NOTE: setting bpg_config requires a edge_cluster_path
 		Type:        schema.TypeList,
@@ -129,88 +131,93 @@ func getPolicyBGPConfigSchema() *schema.Schema {
 		Computed:    true,
 		MaxItems:    1,
 		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"tag":      getTagsSchema(),
-				"revision": getRevisionSchema(),
-				"path":     getPathSchema(),
-				"ecmp": {
-					Type:        schema.TypeBool,
-					Description: "Flag to enable ECMP",
-					Optional:    true,
-					Default:     true,
-				},
-				"enabled": {
-					Type:        schema.TypeBool,
-					Description: "Flag to enable BGP configuration",
-					Optional:    true,
-					Default:     true,
-				},
-				"inter_sr_ibgp": {
-					Type:        schema.TypeBool,
-					Description: "Enable inter SR IBGP configuration",
-					Optional:    true,
-					Default:     true,
-				},
-				"local_as_num": {
-					Type: schema.TypeString,
-					Description: "	BGP AS number in ASPLAIN/ASDOT Format",
-					Optional:     true,
-					Default:      policyBGPLocalAsNumDefault, //NOTE: empty string disables
-					ValidateFunc: validate4ByteASNPlain,
-				},
-				"multipath_relax": {
-					Type:        schema.TypeBool,
-					Description: "Flag to enable BGP multipath relax option",
-					Optional:    true,
-					Default:     true,
-				},
-				"route_aggregation": {
-					Type:        schema.TypeList,
-					Description: "List of routes to be aggregated",
-					Optional:    true,
-					MaxItems:    1000,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"prefix": {
-								Type:         schema.TypeString,
-								Description:  "CIDR of aggregate address",
-								Optional:     true,
-								ValidateFunc: validateCidr(),
-							},
-							"summary_only": {
-								Type:        schema.TypeBool,
-								Description: "Send only summarized route",
-								Optional:    true,
-								Default:     true,
-							},
-						},
+			Schema: getPolicyBGPConfigSchema(),
+		},
+	}
+}
+func getPolicyBGPConfigSchema() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		"gateway_path": getPolicyPathSchema(true, true, "Gateway for this BGP config"),
+		"site_path":    getPolicyPathSchema(false, false, "Site Path for this BGP config"),
+		"tag":          getTagsSchema(),
+		"revision":     getRevisionSchema(),
+		"path":         getPathSchema(),
+		"ecmp": {
+			Type:        schema.TypeBool,
+			Description: "Flag to enable ECMP",
+			Optional:    true,
+			Default:     true,
+		},
+		"enabled": {
+			Type:        schema.TypeBool,
+			Description: "Flag to enable BGP configuration",
+			Optional:    true,
+			Default:     true,
+		},
+		"inter_sr_ibgp": {
+			Type:        schema.TypeBool,
+			Description: "Enable inter SR IBGP configuration",
+			Optional:    true,
+			Default:     true,
+		},
+		"local_as_num": {
+			Type: schema.TypeString,
+			Description: "	BGP AS number in ASPLAIN/ASDOT Format",
+			Optional:     true,
+			Default:      policyBGPLocalAsNumDefault, //NOTE: empty string disables
+			ValidateFunc: validate4ByteASNPlain,
+		},
+		"multipath_relax": {
+			Type:        schema.TypeBool,
+			Description: "Flag to enable BGP multipath relax option",
+			Optional:    true,
+			Default:     true,
+		},
+		"route_aggregation": {
+			Type:        schema.TypeList,
+			Description: "List of routes to be aggregated",
+			Optional:    true,
+			MaxItems:    1000,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prefix": {
+						Type:         schema.TypeString,
+						Description:  "CIDR of aggregate address",
+						Optional:     true,
+						ValidateFunc: validateCidr(),
+					},
+					"summary_only": {
+						Type:        schema.TypeBool,
+						Description: "Send only summarized route",
+						Optional:    true,
+						Default:     true,
 					},
 				},
-				"graceful_restart_mode": {
-					// BgpGracefulRestartConfig.mode
-					Type:         schema.TypeString,
-					Description:  "BGP Graceful Restart Configuration Mode",
-					ValidateFunc: validation.StringInSlice(nsxtPolicyTier0GatewayBgpGracefulRestartModes, false),
-					Optional:     true,
-					Default:      model.BgpGracefulRestartConfig_MODE_HELPER_ONLY,
-				},
-				"graceful_restart_timer": {
-					// BgpGracefulRestartConfig.timer.restart_timer
-					Type:         schema.TypeInt,
-					Description:  "BGP Graceful Restart Timer",
-					Optional:     true,
-					Default:      policyBGPGracefulRestartTimerDefault,
-					ValidateFunc: validation.IntBetween(1, 3600),
-				},
-				"graceful_restart_stale_route_timer": {
-					// BgpGracefulRestartConfig.timer.stale_route_timer
-					Type:         schema.TypeInt,
-					Description:  "BGP Stale Route Timer",
-					Optional:     true,
-					Default:      policyBGPGracefulRestartStaleRouteTimerDefault,
-					ValidateFunc: validation.IntBetween(1, 3600),
-				},
 			},
+		},
+		"graceful_restart_mode": {
+			// BgpGracefulRestartConfig.mode
+			Type:         schema.TypeString,
+			Description:  "BGP Graceful Restart Configuration Mode",
+			ValidateFunc: validation.StringInSlice(nsxtPolicyTier0GatewayBgpGracefulRestartModes, false),
+			Optional:     true,
+			Default:      model.BgpGracefulRestartConfig_MODE_HELPER_ONLY,
+		},
+		"graceful_restart_timer": {
+			// BgpGracefulRestartConfig.timer.restart_timer
+			Type:         schema.TypeInt,
+			Description:  "BGP Graceful Restart Timer",
+			Optional:     true,
+			Default:      policyBGPGracefulRestartTimerDefault,
+			ValidateFunc: validation.IntBetween(1, 3600),
+		},
+		"graceful_restart_stale_route_timer": {
+			// BgpGracefulRestartConfig.timer.stale_route_timer
+			Type:         schema.TypeInt,
+			Description:  "BGP Stale Route Timer",
+			Optional:     true,
+			Default:      policyBGPGracefulRestartStaleRouteTimerDefault,
+			ValidateFunc: validation.IntBetween(1, 3600),
 		},
 	}
 }
