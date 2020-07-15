@@ -314,20 +314,20 @@ func initGatewayLocaleServices(d *schema.ResourceData) ([]*data.StructValue, err
 			// we need revision
 			serviceStruct.Revision = &revision
 		}
-
-		bgpConfig := cfg["bgp_config"].([]interface{})
-		if len(bgpConfig) > 0 {
-			var lsChildren []*data.StructValue
-			// For Global Manager BGP is defined under locale services
-			routingConfigStruct := resourceNsxtPolicyTier0GatewayBGPConfigSchemaToStruct(bgpConfig[0], false, d.Id())
-			structValue, err := initPolicyTier0ChildBgpConfig(&routingConfigStruct)
-			if err != nil {
-				return localeServices, err
+		/*
+			bgpConfig := cfg["bgp_config"].([]interface{})
+			if len(bgpConfig) > 0 {
+				var lsChildren []*data.StructValue
+				// For Global Manager BGP is defined under locale services
+				routingConfigStruct := resourceNsxtPolicyTier0GatewayBGPConfigSchemaToStruct(bgpConfig[0], false, d.Id())
+				structValue, err := initPolicyTier0ChildBgpConfig(&routingConfigStruct)
+				if err != nil {
+					return localeServices, err
+				}
+				lsChildren = append(lsChildren, structValue)
+				serviceStruct.Children = lsChildren
 			}
-			lsChildren = append(lsChildren, structValue)
-			serviceStruct.Children = lsChildren
-		}
-
+		*/
 		dataValue, err := initChildLocaleService(&serviceStruct, false)
 		if err != nil {
 			return localeServices, err

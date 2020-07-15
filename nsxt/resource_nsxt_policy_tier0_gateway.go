@@ -789,12 +789,14 @@ func policyTier0GatewayResourceToInfraStruct(d *schema.ResourceData, connector *
 		}
 	} else {
 		// Global Manager
-		localeServices, err := initGatewayLocaleServices(d)
-		if err != nil {
-			return infraStruct, err
-		}
-		if len(localeServices) > 0 {
-			gwChildren = append(gwChildren, localeServices...)
+		if d.HasChange("locale_service") {
+			localeServices, err := initGatewayLocaleServices(d)
+			if err != nil {
+				return infraStruct, err
+			}
+			if len(localeServices) > 0 {
+				gwChildren = append(gwChildren, localeServices...)
+			}
 		}
 	}
 
