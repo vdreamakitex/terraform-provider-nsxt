@@ -46,11 +46,16 @@ func getDisplayNameSchema() *schema.Schema {
 	}
 }
 
-func getOptionalDisplayNameSchema() *schema.Schema {
+func getComputedDisplayNameSchema() *schema.Schema {
+	return getOptionalDisplayNameSchema(true)
+}
+
+func getOptionalDisplayNameSchema(isComputed bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeString,
 		Description: "Display name for this resource",
 		Optional:    true,
+		Computed:    isComputed,
 	}
 }
 
@@ -59,6 +64,15 @@ func getDescriptionSchema() *schema.Schema {
 		Type:        schema.TypeString,
 		Description: "Description for this resource",
 		Optional:    true,
+	}
+}
+
+func getComputedDescriptionSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Description: "Description for this resource",
+		Optional:    true,
+		Computed:    true,
 	}
 }
 
