@@ -30,6 +30,14 @@ func getNsxIDSchema() *schema.Schema {
 	}
 }
 
+func getComputedNsxIDSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Description: "NSX ID for this resource",
+		Computed:    true,
+	}
+}
+
 func getPathSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeString,
@@ -113,6 +121,7 @@ func getSecurityPolicyAndGatewayRulesSchema(scopeRequired bool) *schema.Schema {
 		MaxItems:    1000,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
+				"nsx_id":       getComputedNsxIDSchema(),
 				"display_name": getDisplayNameSchema(),
 				"description":  getDescriptionSchema(),
 				"revision":     getRevisionSchema(),
@@ -324,6 +333,7 @@ func setPolicyRulesInSchema(d *schema.ResourceData, rules []model.Rule) error {
 		setPathListInMap(elem, "services", rule.Services)
 		setPathListInMap(elem, "scope", rule.Scope)
 		elem["sequence_number"] = rule.SequenceNumber
+		elem["nsx_id"] = rule.Id
 
 		var tagList []map[string]string
 		for _, tag := range rule.Tags {
