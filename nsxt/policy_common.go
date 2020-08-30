@@ -30,6 +30,15 @@ func getNsxIDSchema() *schema.Schema {
 	}
 }
 
+func getFlexNsxIDSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Description: "NSX ID for this resource",
+		Optional:    true,
+		Computed:    true,
+	}
+}
+
 func getComputedNsxIDSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeString,
@@ -121,13 +130,14 @@ func getSecurityPolicyAndGatewayRulesSchema(scopeRequired bool) *schema.Schema {
 		MaxItems:    1000,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"nsx_id":       getComputedNsxIDSchema(),
+				"nsx_id":       getFlexNsxIDSchema(),
 				"display_name": getDisplayNameSchema(),
 				"description":  getDescriptionSchema(),
 				"revision":     getRevisionSchema(),
 				"sequence_number": {
 					Type:        schema.TypeInt,
 					Description: "Sequence number of the this rule",
+					Optional:    true,
 					Computed:    true,
 				},
 				"destination_groups": {
@@ -368,6 +378,10 @@ func getPolicyRulesFromSchema(d *schema.ResourceData) []model.Rule {
 		direction := data["direction"].(string)
 		notes := data["notes"].(string)
 		sequenceNumber := int64(seq)
+		nsxID := ""
+		if id, ok := data["nsx_id"]; ok {
+			nsxID = id.(string)
+		}
 
 		var tagStructs []model.Tag
 		if data["tag"] != nil {
@@ -388,7 +402,9 @@ func getPolicyRulesFromSchema(d *schema.ResourceData) []model.Rule {
 		// to be set for existing rules, and NOT be set for new rules
 		id := newUUID()
 
+		resourceType := "Rule"
 		elem := model.Rule{
+			ResourceType:         &resourceType,
 			Id:                   &id,
 			DisplayName:          &displayName,
 			Notes:                &notes,
@@ -408,6 +424,10 @@ func getPolicyRulesFromSchema(d *schema.ResourceData) []model.Rule {
 			Scope:                getPathListFromMap(data, "scope"),
 			Profiles:             getPathListFromMap(data, "profiles"),
 			SequenceNumber:       &sequenceNumber,
+		}
+
+		if len(nsxID) > 0 {
+			elem.Id = &nsxID
 		}
 		ruleList = append(ruleList, elem)
 		seq = seq + 1
