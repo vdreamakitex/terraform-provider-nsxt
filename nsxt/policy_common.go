@@ -63,10 +63,6 @@ func getDisplayNameSchema() *schema.Schema {
 	}
 }
 
-func getComputedDisplayNameSchema() *schema.Schema {
-	return getOptionalDisplayNameSchema(true)
-}
-
 func getOptionalDisplayNameSchema(isComputed bool) *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeString,

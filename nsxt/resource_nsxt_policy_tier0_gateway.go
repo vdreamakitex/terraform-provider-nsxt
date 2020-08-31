@@ -531,6 +531,7 @@ func getPolicyTier0Gateway(id string, connector *client.RestConnector, isGlobalM
 
 		return convertedObj.(model.Tier0), nil
 	}
+
 	client := infra.NewDefaultTier0sClient(connector)
 	return client.Get(id)
 }
