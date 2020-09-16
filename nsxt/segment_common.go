@@ -3,11 +3,12 @@ package nsxt
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/bindings"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/data"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/protocol/client"
@@ -464,7 +465,12 @@ func getSegmentSubnetDhcpConfigFromSchema(schemaConfig map[string]interface{}) (
 		}
 
 		if len(excludedRanges) > 0 {
-			config.ExcludedRanges = interface2StringList(excludedRanges)
+			var rangeList []string
+			for _, excludedRange := range excludedRanges {
+				rangeMap := excludedRange.(map[string]interface{})
+				rangeList = append(rangeList, fmt.Sprintf("%s-%s", rangeMap["start"].(string), rangeMap["end"].(string)))
+			}
+			config.ExcludedRanges = rangeList
 		}
 
 		if leaseTime > 0 {
@@ -491,6 +497,7 @@ func setSegmentSubnetDhcpConfigInSchema(schemaConfig map[string]interface{}, sub
 	converter := bindings.NewTypeConverter()
 	converter.SetMode(bindings.REST)
 
+	var resultConfigs []map[string]interface{}
 	resultConfig := make(map[string]interface{})
 
 	if subnetConfig.DhcpConfig == nil {
@@ -523,7 +530,8 @@ func setSegmentSubnetDhcpConfigInSchema(schemaConfig map[string]interface{}, sub
 				resultConfig["dhcp_generic_option"] = opts
 			}
 		}
-		schemaConfig["dhcp_v4_config"] = resultConfig
+		resultConfigs = append(resultConfigs, resultConfig)
+		schemaConfig["dhcp_v4_config"] = resultConfigs
 		return nil
 	}
 
@@ -540,9 +548,21 @@ func setSegmentSubnetDhcpConfigInSchema(schemaConfig map[string]interface{}, sub
 		resultConfig["dns_servers"] = dhcpV6Config.DnsServers
 		resultConfig["sntp_servers"] = dhcpV6Config.SntpServers
 		resultConfig["domain_names"] = dhcpV6Config.DomainNames
-		resultConfig["excluded_range"] = dhcpV6Config.ExcludedRanges
 
-		schemaConfig["dhcp_v6_config"] = resultConfig
+		var excludedRanges []map[string]interface{}
+		for _, excludedRange := range dhcpV6Config.ExcludedRanges {
+			addresses := strings.Split(excludedRange, "-")
+			if len(addresses) == 2 {
+				rangeMap := make(map[string]interface{})
+				rangeMap["start"] = addresses[0]
+				rangeMap["end"] = addresses[1]
+				excludedRanges = append(excludedRanges, rangeMap)
+			}
+		}
+		resultConfig["excluded_range"] = excludedRanges
+
+		resultConfigs = append(resultConfigs, resultConfig)
+		schemaConfig["dhcp_v6_config"] = resultConfigs
 		return nil
 	}
 
@@ -1126,7 +1146,9 @@ func nsxtPolicySegmentRead(d *schema.ResourceData, m interface{}, isVlan bool) e
 	d.Set("nsx_id", id)
 	d.Set("path", obj.Path)
 	d.Set("revision", obj.Revision)
-	d.Set("connectivity_path", obj.ConnectivityPath)
+	if !isVlan {
+		d.Set("connectivity_path", obj.ConnectivityPath)
+	}
 	d.Set("dhcp_config_path", obj.DhcpConfigPath)
 	d.Set("domain_name", obj.DomainName)
 	d.Set("transport_zone_path", obj.TransportZonePath)
@@ -1137,7 +1159,7 @@ func nsxtPolicySegmentRead(d *schema.ResourceData, m interface{}, isVlan bool) e
 		if obj.OverlayId != nil {
 			d.Set("overlay_id", int(*obj.OverlayId))
 		} else {
-			d.Set("overlay_id", "")
+			d.Set("overlay_id", 0)
 		}
 	}
 

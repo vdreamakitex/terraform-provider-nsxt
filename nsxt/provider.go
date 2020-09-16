@@ -13,8 +13,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	api "github.com/vmware/go-vmware-nsxt"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/core"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/protocol/client"
@@ -49,8 +48,8 @@ type nsxtClients struct {
 	PolicyGlobalManager    bool
 }
 
-// Provider for VMWare NSX-T. Returns terraform.ResourceProvider
-func Provider() terraform.ResourceProvider {
+// Provider for VMWare NSX-T
+func Provider() *schema.Provider {
 	return &schema.Provider{
 
 		Schema: map[string]*schema.Schema{
@@ -194,11 +193,11 @@ func Provider() terraform.ResourceProvider {
 			"nsxt_policy_vni_pool":                 dataSourceNsxtPolicyVniPool(),
 			"nsxt_policy_ip_block":                 dataSourceNsxtPolicyIPBlock(),
 			"nsxt_policy_ip_pool":                  dataSourceNsxtPolicyIPPool(),
-			"nsxt_policy_context_profile":          dataSourceNsxtPolicyContextProfile(),
 			"nsxt_policy_site":                     dataSourceNsxtPolicySite(),
 			"nsxt_policy_gateway_policy":           dataSourceNsxtPolicyGatewayPolicy(),
 			"nsxt_policy_security_policy":          dataSourceNsxtPolicySecurityPolicy(),
 			"nsxt_policy_group":                    dataSourceNsxtPolicyGroup(),
+			"nsxt_policy_context_profile":          dataSourceNsxtPolicyContextProfile(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{

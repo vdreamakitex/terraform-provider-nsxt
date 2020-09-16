@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/bindings"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/data"
 	"github.com/vmware/vsphere-automation-sdk-go/runtime/protocol/client"
@@ -505,7 +505,10 @@ func resourceNsxtPolicyLBPoolRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("active_monitor_path", "")
 	}
 	d.Set("algorithm", obj.Algorithm)
-	d.Set("member_group", obj.MemberGroup)
+	err = setPolicyPoolMemberGroupInSchema(d, obj.MemberGroup)
+	if err != nil {
+		return err
+	}
 	err = setPolicyPoolMembersInSchema(d, obj.Members)
 	if err != nil {
 		return err
