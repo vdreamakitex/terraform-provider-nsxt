@@ -381,7 +381,7 @@ func policyLBVirtualServerVersionDepenantSet(d *schema.ResourceData, obj *model.
 }
 
 func resourceNsxtPolicyLBVirtualServerExists(id string, connector *client.RestConnector, isGlobalManager bool) (bool, error) {
-	client := infra.NewDefaultLbVirtualServersClient(connector)
+	client := infra.NewLbVirtualServersClient(connector)
 
 	_, err := client.Get(id)
 	if err == nil {
@@ -397,7 +397,7 @@ func resourceNsxtPolicyLBVirtualServerExists(id string, connector *client.RestCo
 
 func resourceNsxtPolicyLBVirtualServerCreate(d *schema.ResourceData, m interface{}) error {
 	connector := getPolicyConnector(m)
-	client := infra.NewDefaultLbVirtualServersClient(connector)
+	client := infra.NewLbVirtualServersClient(connector)
 
 	if client == nil {
 		return policyResourceNotSupportedError()
@@ -470,7 +470,7 @@ func resourceNsxtPolicyLBVirtualServerCreate(d *schema.ResourceData, m interface
 
 func resourceNsxtPolicyLBVirtualServerRead(d *schema.ResourceData, m interface{}) error {
 	connector := getPolicyConnector(m)
-	client := infra.NewDefaultLbVirtualServersClient(connector)
+	client := infra.NewLbVirtualServersClient(connector)
 
 	if client == nil {
 		return policyResourceNotSupportedError()
@@ -514,7 +514,7 @@ func resourceNsxtPolicyLBVirtualServerRead(d *schema.ResourceData, m interface{}
 
 func resourceNsxtPolicyLBVirtualServerUpdate(d *schema.ResourceData, m interface{}) error {
 	connector := getPolicyConnector(m)
-	client := infra.NewDefaultLbVirtualServersClient(connector)
+	client := infra.NewLbVirtualServersClient(connector)
 	if client == nil {
 		return policyResourceNotSupportedError()
 	}
@@ -598,7 +598,7 @@ func resourceNsxtPolicyLBVirtualServerDelete(d *schema.ResourceData, m interface
 	}
 
 	connector := getPolicyConnector(m)
-	client := infra.NewDefaultLbVirtualServersClient(connector)
+	client := infra.NewLbVirtualServersClient(connector)
 	if client == nil {
 		return policyResourceNotSupportedError()
 	}

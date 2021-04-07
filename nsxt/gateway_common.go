@@ -401,7 +401,7 @@ func setPolicyGatewayIntersiteConfigInSchema(d *schema.ResourceData, config *mod
 
 func policyInfraPatch(obj model.Infra, isGlobalManager bool, connector *client.RestConnector, enforceRevision bool) error {
 	if isGlobalManager {
-		infraClient := global_policy.NewDefaultGlobalInfraClient(connector)
+		infraClient := global_policy.NewGlobalInfraClient(connector)
 		gmObj, err := convertModelBindingType(obj, model.InfraBindingType(), gm_model.InfraBindingType())
 		if err != nil {
 			return err
@@ -410,7 +410,7 @@ func policyInfraPatch(obj model.Infra, isGlobalManager bool, connector *client.R
 		return infraClient.Patch(gmObj.(gm_model.Infra), &enforceRevision)
 	}
 
-	infraClient := nsx_policy.NewDefaultInfraClient(connector)
+	infraClient := nsx_policy.NewInfraClient(connector)
 	return infraClient.Patch(obj, &enforceRevision)
 }
 

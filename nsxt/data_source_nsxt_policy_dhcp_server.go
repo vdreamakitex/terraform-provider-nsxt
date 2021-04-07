@@ -39,7 +39,7 @@ func dataSourceNsxtPolicyDhcpServerRead(d *schema.ResourceData, m interface{}) e
 
 	objID := d.Get("id").(string)
 	objName := d.Get("display_name").(string)
-	client := infra.NewDefaultDhcpServerConfigsClient(connector)
+	client := infra.NewDhcpServerConfigsClient(connector)
 	var obj model.DhcpServerConfig
 	if objID != "" {
 		// Get by id

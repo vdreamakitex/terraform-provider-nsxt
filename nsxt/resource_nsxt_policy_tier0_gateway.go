@@ -293,7 +293,7 @@ func getPolicyVRFConfigSchema() *schema.Schema {
 }
 
 func listGlobalManagerTier0GatewayLocaleServices(connector *client.RestConnector, gwID string, cursor *string) (model.LocaleServicesListResult, error) {
-	client := gm_tier_0s.NewDefaultLocaleServicesClient(connector)
+	client := gm_tier_0s.NewLocaleServicesClient(connector)
 	markForDelete := false
 	listResponse, err := client.List(gwID, cursor, &markForDelete, nil, nil, nil, nil)
 	if err != nil {
@@ -309,7 +309,7 @@ func listGlobalManagerTier0GatewayLocaleServices(connector *client.RestConnector
 }
 
 func listLocalManagerTier0GatewayLocaleServices(connector *client.RestConnector, gwID string, cursor *string) (model.LocaleServicesListResult, error) {
-	client := tier_0s.NewDefaultLocaleServicesClient(connector)
+	client := tier_0s.NewLocaleServicesClient(connector)
 	markForDelete := false
 	return client.List(gwID, cursor, &markForDelete, nil, nil, nil, nil)
 }
@@ -325,7 +325,7 @@ func listPolicyTier0GatewayLocaleServices(connector *client.RestConnector, gwID 
 
 func getPolicyTier0GatewayLocaleServiceWithEdgeCluster(gwID string, connector *client.RestConnector) (*model.LocaleServices, error) {
 	// Get the locale services of this Tier0 for the edge-cluster id
-	client := tier_0s.NewDefaultLocaleServicesClient(connector)
+	client := tier_0s.NewLocaleServicesClient(connector)
 	obj, err := client.Get(gwID, defaultPolicyLocaleServiceID)
 	if err == nil {
 		return &obj, nil
@@ -402,7 +402,7 @@ func initPolicyTier0BGPConfigMap(bgpConfig *model.BgpRoutingConfig) map[string]i
 
 func resourceNsxtPolicyTier0GatewayReadBGPConfig(d *schema.ResourceData, connector *client.RestConnector, localeService model.LocaleServices) error {
 	var bgpConfigs []map[string]interface{}
-	client := locale_services.NewDefaultBgpClient(connector)
+	client := locale_services.NewBgpClient(connector)
 
 	t0Id := d.Id()
 	bgpConfig, err := client.Get(t0Id, *localeService.Id)
@@ -502,10 +502,10 @@ func setPolicyVRFConfigInSchema(d *schema.ResourceData, config *model.Tier0VrfCo
 func resourceNsxtPolicyTier0GatewayExists(id string, connector *client.RestConnector, isGlobalManager bool) (bool, error) {
 	var err error
 	if isGlobalManager {
-		client := gm_infra.NewDefaultTier0sClient(connector)
+		client := gm_infra.NewTier0sClient(connector)
 		_, err = client.Get(id)
 	} else {
-		client := infra.NewDefaultTier0sClient(connector)
+		client := infra.NewTier0sClient(connector)
 		_, err = client.Get(id)
 	}
 
@@ -851,7 +851,7 @@ func resourceNsxtPolicyTier0GatewayRead(d *schema.ResourceData, m interface{}) e
 	var obj model.Tier0
 	isGlobalManager := isPolicyGlobalManager(m)
 	if isGlobalManager {
-		client := gm_infra.NewDefaultTier0sClient(connector)
+		client := gm_infra.NewTier0sClient(connector)
 		gmObj, err := client.Get(id)
 		if err != nil {
 			return handleReadError(d, "Tier0", id, err)
@@ -866,7 +866,7 @@ func resourceNsxtPolicyTier0GatewayRead(d *schema.ResourceData, m interface{}) e
 
 	} else {
 		var err error
-		client := infra.NewDefaultTier0sClient(connector)
+		client := infra.NewTier0sClient(connector)
 		obj, err = client.Get(id)
 		if err != nil {
 			return handleReadError(d, "Tier0", id, err)

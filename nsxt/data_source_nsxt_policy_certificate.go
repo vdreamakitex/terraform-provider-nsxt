@@ -34,7 +34,7 @@ func dataSourceNsxtPolicyCertificateRead(d *schema.ResourceData, m interface{}) 
 		return nil
 	}
 	connector := getPolicyConnector(m)
-	client := infra.NewDefaultCertificatesClient(connector)
+	client := infra.NewCertificatesClient(connector)
 
 	objID := d.Get("id").(string)
 	objName := d.Get("display_name").(string)

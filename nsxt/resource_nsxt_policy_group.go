@@ -246,10 +246,10 @@ func getExtendedCriteriaSetSchema() *schema.Resource {
 func resourceNsxtPolicyGroupExistsInDomain(id string, domain string, connector *client.RestConnector, isGlobalManager bool) (bool, error) {
 	var err error
 	if isGlobalManager {
-		client := gm_domains.NewDefaultGroupsClient(connector)
+		client := gm_domains.NewGroupsClient(connector)
 		_, err = client.Get(domain, id)
 	} else {
-		client := domains.NewDefaultGroupsClient(connector)
+		client := domains.NewGroupsClient(connector)
 		_, err = client.Get(domain, id)
 	}
 	if err == nil {
@@ -775,10 +775,10 @@ func resourceNsxtPolicyGroupCreate(d *schema.ResourceData, m interface{}) error 
 		if err1 != nil {
 			return err1
 		}
-		client := gm_domains.NewDefaultGroupsClient(connector)
+		client := gm_domains.NewGroupsClient(connector)
 		err = client.Patch(d.Get("domain").(string), id, gmObj.(gm_model.Group))
 	} else {
-		client := domains.NewDefaultGroupsClient(connector)
+		client := domains.NewGroupsClient(connector)
 		err = client.Patch(d.Get("domain").(string), id, obj)
 	}
 	// Create the resource using PATCH
@@ -802,7 +802,7 @@ func resourceNsxtPolicyGroupRead(d *schema.ResourceData, m interface{}) error {
 	}
 	var obj model.Group
 	if isPolicyGlobalManager(m) {
-		client := gm_domains.NewDefaultGroupsClient(connector)
+		client := gm_domains.NewGroupsClient(connector)
 		gmObj, err := client.Get(domainName, id)
 		if err != nil {
 			return handleReadError(d, "Group", id, err)
@@ -814,7 +814,7 @@ func resourceNsxtPolicyGroupRead(d *schema.ResourceData, m interface{}) error {
 		obj = rawObj.(model.Group)
 	} else {
 		var err error
-		client := domains.NewDefaultGroupsClient(connector)
+		client := domains.NewGroupsClient(connector)
 		obj, err = client.Get(domainName, id)
 		if err != nil {
 			return handleReadError(d, "Group", id, err)
@@ -901,12 +901,12 @@ func resourceNsxtPolicyGroupUpdate(d *schema.ResourceData, m interface{}) error 
 			return err1
 		}
 		gmGroup := gmObj.(gm_model.Group)
-		client := gm_domains.NewDefaultGroupsClient(connector)
+		client := gm_domains.NewGroupsClient(connector)
 
 		// Update the resource using PATCH
 		err = client.Patch(d.Get("domain").(string), id, gmGroup)
 	} else {
-		client := domains.NewDefaultGroupsClient(connector)
+		client := domains.NewGroupsClient(connector)
 
 		// Update the resource using PATCH
 		err = client.Patch(d.Get("domain").(string), id, obj)
@@ -930,10 +930,10 @@ func resourceNsxtPolicyGroupDelete(d *schema.ResourceData, m interface{}) error 
 	failIfSubtreeExists := false
 
 	if isPolicyGlobalManager(m) {
-		client := gm_domains.NewDefaultGroupsClient(connector)
+		client := gm_domains.NewGroupsClient(connector)
 		err = client.Delete(d.Get("domain").(string), id, &failIfSubtreeExists, &forceDelete)
 	} else {
-		client := domains.NewDefaultGroupsClient(connector)
+		client := domains.NewGroupsClient(connector)
 		err = client.Delete(d.Get("domain").(string), id, &failIfSubtreeExists, &forceDelete)
 	}
 

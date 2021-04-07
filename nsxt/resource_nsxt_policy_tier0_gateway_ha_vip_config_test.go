@@ -166,7 +166,7 @@ func testAccNsxtPolicyTier0HAVipConfigExists(resourceName string) resource.TestC
 		localeServiceID := rs.Primary.Attributes["locale_service_id"]
 		gwID := rs.Primary.Attributes["tier0_id"]
 		if testAccIsGlobalManager() {
-			nsxClient := gm_tier0s.NewDefaultLocaleServicesClient(connector)
+			nsxClient := gm_tier0s.NewLocaleServicesClient(connector)
 			obj, err := nsxClient.Get(gwID, localeServiceID)
 			if err != nil {
 				return fmt.Errorf("Error while retrieving policy Tier0 HA vip config %s. Error: %v", resourceID, err)
@@ -175,7 +175,7 @@ func testAccNsxtPolicyTier0HAVipConfigExists(resourceName string) resource.TestC
 				return fmt.Errorf("Error while retrieving policy Tier0 HA vip config %s. HaVipConfigs is empty", resourceID)
 			}
 		} else {
-			nsxClient := tier_0s.NewDefaultLocaleServicesClient(connector)
+			nsxClient := tier_0s.NewLocaleServicesClient(connector)
 			obj, err := nsxClient.Get(gwID, localeServiceID)
 			if err != nil {
 				return fmt.Errorf("Error while retrieving policy Tier0 HA vip config %s. Error: %v", resourceID, err)
@@ -201,13 +201,13 @@ func testAccNsxtPolicyTier0HAVipConfigCheckDestroy(state *terraform.State, displ
 		localeServiceID := rs.Primary.Attributes["locale_service_id"]
 		gwID := rs.Primary.Attributes["tier0_id"]
 		if testAccIsGlobalManager() {
-			nsxClient := gm_tier0s.NewDefaultLocaleServicesClient(connector)
+			nsxClient := gm_tier0s.NewLocaleServicesClient(connector)
 			obj, err := nsxClient.Get(gwID, localeServiceID)
 			if err == nil && obj.HaVipConfigs != nil {
 				return fmt.Errorf("Policy Tier0 HA vip config %s still exists", resourceID)
 			}
 		} else {
-			nsxClient := tier_0s.NewDefaultLocaleServicesClient(connector)
+			nsxClient := tier_0s.NewLocaleServicesClient(connector)
 			obj, err := nsxClient.Get(gwID, localeServiceID)
 			if err == nil && obj.HaVipConfigs != nil {
 				return fmt.Errorf("Policy Tier0 HA vip config %s still exists", resourceID)
